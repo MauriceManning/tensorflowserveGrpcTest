@@ -7,7 +7,8 @@ import tensorflow as tf
 from tensorflow_serving.apis.prediction_service_pb2_grpc import PredictionServiceStub
 from tensorflow_serving.apis.predict_pb2 import PredictRequest
 from util import predict_response_to_dict, make_tensor_proto
-
+from PIL import Image
+import numpy as np
 
 class ProdClient:
     def __init__(self, host, model_name, model_version):
@@ -27,6 +28,15 @@ class ProdClient:
         self.logger.info('Model name: {}'.format(self.model_name))
         self.logger.info('Model version: {}'.format(self.model_version))
 
+        image = Image.open(request_data)
+        image = image.resize( (224,224), Image.NEAREST)
+
+        image = np.asarray( image ).reshape((1, 224, 224, 3))
+
+        
+        
+
+
         # Create gRPC client and request
         t = time.time()
         channel = grpc.insecure_channel(self.host)
@@ -42,12 +52,22 @@ class ProdClient:
 
         request.model_spec.name = self.model_name
         request.model_spec.signature_name = 'predict_images'
+        #request.model_spec.signature_name = tf.saved_model.signature_constants.CLASSIFY_METHOD_NAME
 
         if self.model_version > 0:
             request.model_spec.version.value = self.model_version
 
+
+        #pic = Image.open(request_data)
+        #image = np.asarray(Image.open(request_data) )
+        print("Image shape:", image.shape)
+
+        #foo =  tf.contrib.util.make_tensor_proto(image.astype(dtype=np.float32), shape=[1, 224, 224, 3])
+        #print("tensor shape:", foo.get_shape() )
+
+
         request.inputs['images'].CopyFrom(
-                tf.contrib.util.make_tensor_proto(request_data, shape=[1, request_data.size]))
+                tf.contrib.util.make_tensor_proto(image.astype(dtype=np.float32), shape=[1, 224, 224, 3]))
 
 
         try:
